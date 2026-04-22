@@ -8,51 +8,9 @@ type StreakWidgetProps = {
   sprintTotal: number;
 };
 
-// Outer ring = accent green circle; inner circle = dark background.
-// This produces a circular ring effect using nested FlexWidgets.
-function CircleRing({ streak }: { streak: number }) {
-  return (
-    <FlexWidget
-      style={{
-        width: 96,
-        height: 96,
-        borderRadius: 48,
-        backgroundColor: '#00E676',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <FlexWidget
-        style={{
-          width: 76,
-          height: 76,
-          borderRadius: 38,
-          backgroundColor: '#111111',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-        }}
-      >
-        <TextWidget
-          text="🔥"
-          style={{ fontSize: 18, marginBottom: 0 }}
-        />
-        <TextWidget
-          text={String(streak)}
-          style={{
-            fontSize: 26,
-            color: '#F2F2F2',
-            fontWeight: 'bold',
-          }}
-        />
-      </FlexWidget>
-    </FlexWidget>
-  );
-}
-
 // 2×2 compact widget
-export function StreakWidget2x2({ streak, dailyPct, sprintDay, sprintTotal }: StreakWidgetProps) {
-  const pctLabel = `${Math.round(dailyPct * 100)}% today`;
+export function StreakWidget2x2({ streak, dailyPct }: StreakWidgetProps) {
+  const pct = Math.round(dailyPct * 100);
 
   return (
     <FlexWidget
@@ -61,39 +19,68 @@ export function StreakWidget2x2({ streak, dailyPct, sprintDay, sprintTotal }: St
         width: 'match_parent',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#0F0F0F',
-        borderRadius: 16,
-        padding: 12,
+        justifyContent: 'center',
+        backgroundColor: '#111111',
+        borderRadius: 20,
+        paddingTop: 14,
+        paddingBottom: 14,
+        paddingLeft: 14,
+        paddingRight: 14,
       }}
     >
-      {/* Top label */}
+      {/* App name */}
       <TextWidget
         text="GRIT"
         style={{
           fontSize: 11,
           color: '#00E676',
           fontWeight: 'bold',
-          letterSpacing: 2,
         }}
       />
 
-      {/* Ring with streak */}
-      <CircleRing streak={streak} />
+      {/* Flame + streak number */}
+      <FlexWidget
+        style={{
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1A1A1A',
+          borderRadius: 50,
+          width: 80,
+          height: 80,
+          marginTop: 8,
+          marginBottom: 8,
+        }}
+      >
+        <TextWidget
+          text="🔥"
+          style={{ fontSize: 22, color: '#FFFFFF' }}
+        />
+        <TextWidget
+          text={String(streak)}
+          style={{ fontSize: 24, color: '#FFFFFF', fontWeight: 'bold' }}
+        />
+      </FlexWidget>
 
-      {/* Bottom label */}
+      {/* Label */}
       <TextWidget
         text="DAY STREAK"
-        style={{ fontSize: 9, color: '#7A7A7A', letterSpacing: 1 }}
+        style={{ fontSize: 9, color: '#7A7A7A' }}
+      />
+
+      {/* Daily progress */}
+      <TextWidget
+        text={`${pct}% today`}
+        style={{ fontSize: 9, color: '#00E676' }}
       />
     </FlexWidget>
   );
 }
 
-// 4×2 wide widget — ring on left, stats on right
+// 4×2 wide widget
 export function StreakWidget4x2({ streak, dailyPct, sprintDay, sprintTotal }: StreakWidgetProps) {
-  const pctLabel = `${Math.round(dailyPct * 100)}% done today`;
-  const sprintLabel = `Day ${sprintDay} of ${sprintTotal}`;
+  const pct = Math.round(dailyPct * 100);
+  const sprintLabel = `Sprint · Day ${sprintDay} of ${sprintTotal}`;
 
   return (
     <FlexWidget
@@ -102,49 +89,60 @@ export function StreakWidget4x2({ streak, dailyPct, sprintDay, sprintTotal }: St
         width: 'match_parent',
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#0F0F0F',
-        borderRadius: 16,
-        paddingHorizontal: 20,
-        paddingVertical: 14,
+        backgroundColor: '#111111',
+        borderRadius: 20,
+        paddingTop: 16,
+        paddingBottom: 16,
+        paddingLeft: 20,
+        paddingRight: 20,
       }}
     >
-      {/* Left: ring */}
-      <CircleRing streak={streak} />
-
-      {/* Right: stats */}
+      {/* Left: circle badge */}
       <FlexWidget
         style={{
-          flexDirection: 'column',
-          marginLeft: 18,
+          width: 88,
+          height: 88,
+          borderRadius: 44,
+          backgroundColor: '#00E676',
+          alignItems: 'center',
           justifyContent: 'center',
+          flexDirection: 'column',
+        }}
+      >
+        <TextWidget
+          text="🔥"
+          style={{ fontSize: 20, color: '#000000' }}
+        />
+        <TextWidget
+          text={String(streak)}
+          style={{ fontSize: 26, color: '#000000', fontWeight: 'bold' }}
+        />
+      </FlexWidget>
+
+      {/* Right: text info */}
+      <FlexWidget
+        style={{
           flex: 1,
+          flexDirection: 'column',
+          justifyContent: 'center',
+          paddingLeft: 16,
         }}
       >
         <TextWidget
           text="GRIT"
-          style={{
-            fontSize: 11,
-            color: '#00E676',
-            fontWeight: 'bold',
-            letterSpacing: 2,
-            marginBottom: 4,
-          }}
+          style={{ fontSize: 10, color: '#00E676', fontWeight: 'bold' }}
         />
         <TextWidget
-          text={`${streak} Day Streak 🔥`}
-          style={{
-            fontSize: 18,
-            color: '#F2F2F2',
-            fontWeight: 'bold',
-          }}
+          text={`${streak} Day Streak`}
+          style={{ fontSize: 20, color: '#FFFFFF', fontWeight: 'bold' }}
         />
         <TextWidget
           text={sprintLabel}
-          style={{ fontSize: 12, color: '#7A7A7A', marginTop: 4 }}
+          style={{ fontSize: 11, color: '#7A7A7A' }}
         />
         <TextWidget
-          text={pctLabel}
-          style={{ fontSize: 12, color: '#00E676', marginTop: 2 }}
+          text={`${pct}% done today`}
+          style={{ fontSize: 11, color: '#00E676' }}
         />
       </FlexWidget>
     </FlexWidget>

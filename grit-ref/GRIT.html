@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GRIT — Discipline App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0D0D0D;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+    }
+    ::-webkit-scrollbar { display: none; }
+    input { -webkit-appearance: none; }
+    button { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ── Design tokens ────────────────────────────────────────────────────────────
+    const T = {
+      bg:     '#000000',
+      s1:     '#0F0F0F',
+      s2:     '#1A1A1A',
+      s3:     '#252525',
+      text:   '#F2F2F2',
+      muted:  '#7A7A7A',
+      dim:    '#2E2E2E',
+      accent: '#00E676',
+      amber:  '#FFB300',
+      red:    '#CF4647',
+      dg:     "'Space Grotesk', sans-serif",
+      bd:     "'Inter', sans-serif",
+    };
+
+    // ── Helpers ──────────────────────────────────────────────────────────────────
+    function Label({ children, style = {} }) {
+      return <div style={{ fontFamily: T.bd, fontSize: 10, fontWeight: 600, color: T.muted, textTransform: 'uppercase', letterSpacing: 1.6, ...style }}>{children}</div>;
+    }
+
+    function Divider() {
+      return <div style={{ height: '0.5px', background: T.dim, margin: '0 0' }} />;
+    }
+
+    // ── Ring ─────────────────────────────────────────────────────────────────────
+    function Ring({ pct, size = 110, stroke = 9, color = T.accent }) {
+      const r = (size - stroke) / 2;
+      const circ = 2 * Math.PI * r;
+      return (
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={T.s2} strokeWidth={stroke} />
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color}
+            strokeWidth={stroke} strokeDasharray={`${circ * pct} ${circ}`}
+            strokeLinecap="round" style={{ transition: 'stroke-dasharray 0.8s ease' }} />
+        </svg>
+      );
+    }
+
+    // ── Icons ────────────────────────────────────────────────────────────────────
+    const icons = {
+      today: (c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>,
+      sprint: (c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>,
+      profile: (c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>,
+      chevron: (c='#fff') => <svg width="8" height="14" viewBox="0 0 8 14" fill="none"><path d="M7 1L1 7l6 6" stroke={c} strokeWidth="2" strokeLinecap="round"/></svg>,
+      lock: (c) => <svg width="18" height="20" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>,
+      check: (c) => <svg width="18" height="14" viewBox="0 0 24 18" fill="none"><path d="M2 9l7 7L22 2" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+      camera: (c) => <svg width="22" height="20" viewBox="0 0 24 20" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"><path d="M23 17a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z"/><circle cx="12" cy="11" r="3.5"/></svg>,
+      plus: (c) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round"><path d="M12 4v16M4 12h16"/></svg>,
+      flame: (c) => <svg width="16" height="20" viewBox="0 0 16 22" fill="none" stroke={c} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2C8 2 4 6 4 10c0 2.2 1.8 4 4 4s4-1.8 4-4c0-1.4-.7-2.6-1.5-3.5C9.7 5.8 10 4.5 8 2z"/><path d="M4 16c-2-1.2-3-3.2-3-5.5C1 5.3 5.5 1 8 1c2.5 0 7 4.3 7 9.5S12.5 20 8 20c-4.5 0-7-3-7-6"/></svg>,
+    };
+
+    // ── Bottom nav ───────────────────────────────────────────────────────────────
+    function BottomNav({ tab, onTab }) {
+      const tabs = [
+        { id: 'today', label: 'Today', icon: icons.today },
+        { id: 'sprint', label: 'Sprint', icon: icons.sprint },
+        { id: 'profile', label: 'Profile', icon: icons.profile },
+      ];
+      return (
+        <div style={{ background: T.s1, borderTop: `0.5px solid ${T.dim}`, display: 'flex', height: 83, paddingBottom: 24, flexShrink: 0 }}>
+          {tabs.map(t => {
+            const active = tab === t.id;
+            return (
+              <div key={t.id} onClick={() => onTab(t.id)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer', paddingTop: 8 }}>
+                {t.icon(active ? T.accent : T.muted)}
+                <span style={{ fontFamily: T.bd, fontSize: 10, fontWeight: 500, color: active ? T.accent : T.muted, letterSpacing: 0.4 }}>{t.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ── TODAY SCREEN ─────────────────────────────────────────────────────────────
+    function TodayScreen({ onOpenAction }) {
+      const tasks = [
+        { id: 0, time: '6:00', label: 'AM', name: 'Cold Shower',      done: true,  active: false, pts: 15, window: '15 min' },
+        { id: 1, time: '7:00', label: 'AM', name: 'Morning Workout',  done: true,  active: false, pts: 30, window: '30 min' },
+        { id: 2, time: '12:00',label: 'PM', name: 'Midday Walk',      done: false, active: true,  pts: 20, window: '20 min' },
+        { id: 3, time: '3:00', label: 'PM', name: 'Deep Work Block',  done: false, active: false, pts: 40, window: '60 min' },
+        { id: 4, time: '9:00', label: 'PM', name: 'Reading',          done: false, active: false, pts: 20, window: '30 min' },
+      ];
+      const doneCount = tasks.filter(t => t.done).length;
+      const pct = doneCount / tasks.length;
+
+      return (
+        <div style={{ background: T.bg, paddingTop: 68 }}>
+          {/* ── Header ── */}
+          <div style={{ padding: '0 22px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div>
+              <Label style={{ marginBottom: 4 }}>Day 7 of 14</Label>
+              <div style={{ fontFamily: T.dg, fontSize: 28, fontWeight: 700, color: T.text, letterSpacing: -0.5 }}>GRIT</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <Label style={{ marginBottom: 4 }}>Streak</Label>
+              <div style={{ fontFamily: T.dg, fontSize: 36, fontWeight: 700, color: T.accent, lineHeight: 1 }}>12</div>
+            </div>
+          </div>
+
+          {/* ── Hero card ── */}
+          <div style={{ padding: '0 16px', marginBottom: 24 }}>
+            <div onClick={() => onOpenAction(tasks[2])} style={{
+              background: T.s1, borderRadius: 18, padding: '20px 22px 22px',
+              border: `0.5px solid ${T.dim}`, cursor: 'pointer', position: 'relative', overflow: 'hidden',
+            }}>
+              {/* green accent line */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: T.accent, borderRadius: '18px 18px 0 0' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                <div>
+                  <Label style={{ marginBottom: 6 }}>Up next · 12:00 PM</Label>
+                  <div style={{ fontFamily: T.dg, fontSize: 20, fontWeight: 600, color: T.text }}>Midday Walk</div>
+                </div>
+                <div style={{ background: T.accent + '22', border: `1px solid ${T.accent}44`, borderRadius: 8, padding: '4px 10px' }}>
+                  <span style={{ fontFamily: T.dg, fontSize: 11, fontWeight: 700, color: T.accent, letterSpacing: 1 }}>ACTIVE</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 6 }}>
+                <span style={{ fontFamily: T.dg, fontSize: 68, fontWeight: 700, color: T.text, lineHeight: 1, letterSpacing: -3 }}>3</span>
+                <span style={{ fontFamily: T.dg, fontSize: 52, fontWeight: 700, color: T.accent, lineHeight: 1 }}>:</span>
+                <span style={{ fontFamily: T.dg, fontSize: 68, fontWeight: 700, color: T.text, lineHeight: 1, letterSpacing: -3 }}>47</span>
+                <span style={{ fontFamily: T.dg, fontSize: 52, fontWeight: 700, color: T.accent, lineHeight: 1 }}>:</span>
+                <span style={{ fontFamily: T.dg, fontSize: 68, fontWeight: 700, color: T.text, lineHeight: 1, letterSpacing: -3 }}>22</span>
+              </div>
+              <div style={{ fontFamily: T.bd, fontSize: 12, color: T.muted }}>until trigger · 20 min action window · 20 pts</div>
+            </div>
+          </div>
+
+          {/* ── Ring + stats ── */}
+          <div style={{ padding: '0 22px', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div style={{ position: 'relative' }}>
+              <Ring pct={pct} size={104} stroke={8} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontFamily: T.dg, fontSize: 24, fontWeight: 700, color: T.text, lineHeight: 1 }}>{Math.round(pct * 100)}%</div>
+                <div style={{ fontFamily: T.bd, fontSize: 10, color: T.muted, marginTop: 2 }}>today</div>
+              </div>
+            </div>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              {[
+                { val: `${doneCount}/${tasks.length}`, label: 'Tasks done' },
+                { val: '85', label: 'Pts today' },
+                { val: '84%', label: 'Sprint avg' },
+                { val: '847', label: 'Total pts' },
+              ].map((s, i) => (
+                <div key={i}>
+                  <div style={{ fontFamily: T.dg, fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1 }}>{s.val}</div>
+                  <div style={{ fontFamily: T.bd, fontSize: 11, color: T.muted, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Task list ── */}
+          <div style={{ padding: '0 22px' }}>
+            <Label style={{ marginBottom: 14 }}>Today's Schedule</Label>
+            {tasks.map((task, i) => {
+              const status = task.done ? 'done' : task.active ? 'active' : 'upcoming';
+              return (
+                <div key={task.id}>
+                  <div onClick={() => task.active && onOpenAction(task)} style={{
+                    display: 'flex', alignItems: 'center', gap: 14, padding: '13px 0',
+                    cursor: task.active ? 'pointer' : 'default',
+                    opacity: task.done ? 0.38 : 1,
+                  }}>
+                    {/* Time */}
+                    <div style={{ width: 48, flexShrink: 0, textAlign: 'right' }}>
+                      <div style={{ fontFamily: T.dg, fontSize: 13, fontWeight: 600, color: status === 'active' ? T.accent : T.muted, lineHeight: 1 }}>{task.time}</div>
+                      <div style={{ fontFamily: T.bd, fontSize: 10, color: T.dim, marginTop: 2 }}>{task.label}</div>
+                    </div>
+                    {/* Dot */}
+                    <div style={{ position: 'relative', flexShrink: 0, width: 10 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: task.done ? T.accent : task.active ? T.amber : T.dim }} />
+                    </div>
+                    {/* Name */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: T.dg, fontSize: 15, fontWeight: status === 'active' ? 700 : 500, color: status === 'active' ? T.text : T.muted }}>
+                        {task.name}
+                      </div>
+                      {task.active && (
+                        <div style={{ fontFamily: T.bd, fontSize: 11, color: T.amber, marginTop: 2 }}>Tap to act now</div>
+                      )}
+                    </div>
+                    {/* Points */}
+                    <div style={{ fontFamily: T.dg, fontSize: 12, fontWeight: 600, color: task.done ? T.accent : T.dim }}>
+                      {task.done ? `+${task.pts}` : `${task.pts}pts`}
+                    </div>
+                    {/* Check */}
+                    {task.done && (
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: T.accent + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {icons.check(T.accent)}
+                      </div>
+                    )}
+                  </div>
+                  {i < tasks.length - 1 && <Divider />}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ height: 16 }} />
+        </div>
+      );
+    }
+
+    // ── ACTION SCREEN ────────────────────────────────────────────────────────────
+    function ActionScreen({ task, onBack, onComplete }) {
+      const WINDOW_SECS = 20 * 60;
+      const [secs, setSecs] = useState(27 * 60 + 43);
+      const [snoozed, setSnoozed] = useState(0);
+      const [phase, setPhase] = useState('act'); // act | preview | done | missed
+
+      useEffect(() => {
+        if (phase !== 'act') return;
+        const t = setInterval(() => setSecs(s => {
+          if (s <= 1) { setPhase('missed'); return 0; }
+          return s - 1;
+        }), 1000);
+        return () => clearInterval(t);
+      }, [phase]);
+
+      const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+      const ss = String(secs % 60).padStart(2, '0');
+      const windowProgress = 1 - (secs / WINDOW_SECS);
+      const barColor = windowProgress > 0.8 ? T.red : windowProgress > 0.5 ? T.amber : T.accent;
+
+      if (phase === 'done') return (
+        <div style={{ background: T.bg, height: '100%', paddingTop: 68, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', border: `2px solid ${T.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28 }}>
+            {icons.check(T.accent)}
+          </div>
+          <div style={{ fontFamily: T.dg, fontSize: 42, fontWeight: 700, color: T.text, marginBottom: 8, letterSpacing: -1 }}>Done.</div>
+          <div style={{ fontFamily: T.bd, fontSize: 15, color: T.muted, marginBottom: 4 }}>{task?.name} completed.</div>
+          <div style={{ fontFamily: T.dg, fontSize: 24, fontWeight: 700, color: T.accent, marginBottom: 48 }}>+{task?.pts || 20} pts</div>
+          <button onClick={onBack} style={{ background: T.s2, border: `1px solid ${T.dim}`, borderRadius: 12, padding: '14px 40px', fontFamily: T.dg, fontSize: 15, fontWeight: 600, color: T.text, cursor: 'pointer' }}>Back to Today</button>
+        </div>
+      );
+
+      if (phase === 'missed') return (
+        <div style={{ background: T.bg, height: '100%', paddingTop: 68, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ fontFamily: T.dg, fontSize: 64, fontWeight: 700, color: T.red, marginBottom: 16, letterSpacing: -2 }}>Missed.</div>
+          <div style={{ fontFamily: T.bd, fontSize: 15, color: T.muted, marginBottom: 48, textAlign: 'center', padding: '0 40px' }}>Action window expired. Streak at risk.</div>
+          <button onClick={onBack} style={{ background: T.s2, border: `1px solid ${T.dim}`, borderRadius: 12, padding: '14px 40px', fontFamily: T.dg, fontSize: 15, fontWeight: 600, color: T.text, cursor: 'pointer' }}>Back to Today</button>
+        </div>
+      );
+
+      if (phase === 'preview') return (
+        <div style={{ background: '#111', height: '100%', display: 'flex', flexDirection: 'column', paddingTop: 68 }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, padding: '0 24px' }}>
+            <div style={{ width: '100%', aspectRatio: '3/4', background: T.s2, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `0.5px solid ${T.dim}` }}>
+              <div style={{ fontFamily: T.bd, fontSize: 12, color: T.muted, textAlign: 'center' }}>
+                <div style={{ marginBottom: 8 }}>{icons.camera(T.muted)}</div>
+                [proof photo preview]
+              </div>
+            </div>
+          </div>
+          <div style={{ padding: '16px 22px 40px', display: 'flex', gap: 12 }}>
+            <button onClick={() => setPhase('act')} style={{ flex: 1, background: T.s2, border: `1px solid ${T.dim}`, borderRadius: 14, padding: '16px', fontFamily: T.dg, fontSize: 15, fontWeight: 600, color: T.muted, cursor: 'pointer' }}>Retake</button>
+            <button onClick={() => setPhase('done')} style={{ flex: 2, background: T.accent, border: 'none', borderRadius: 14, padding: '16px', fontFamily: T.dg, fontSize: 16, fontWeight: 700, color: T.bg, cursor: 'pointer' }}>Submit Proof</button>
+          </div>
+        </div>
+      );
+
+      return (
+        <div style={{ background: T.bg, height: '100%', display: 'flex', flexDirection: 'column', paddingTop: 68 }}>
+          {/* Back */}
+          <div style={{ padding: '0 22px 24px' }}>
+            <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {icons.chevron(T.muted)}
+              <span style={{ fontFamily: T.bd, fontSize: 14, color: T.muted }}>Today</span>
+            </button>
+          </div>
+
+          {/* Task label */}
+          <div style={{ padding: '0 22px 32px' }}>
+            <Label style={{ marginBottom: 8 }}>Now Active · 12:00 PM</Label>
+            <div style={{ fontFamily: T.dg, fontSize: 28, fontWeight: 700, color: T.text, letterSpacing: -0.5 }}>{task?.name || 'Midday Walk'}</div>
+          </div>
+
+          {/* Countdown — hero */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 22px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 8 }}>
+              <span style={{ fontFamily: T.dg, fontSize: 88, fontWeight: 700, color: T.text, lineHeight: 1, letterSpacing: -4 }}>{mm}</span>
+              <span style={{ fontFamily: T.dg, fontSize: 64, fontWeight: 700, color: T.accent, lineHeight: 1, margin: '0 2px' }}>:</span>
+              <span style={{ fontFamily: T.dg, fontSize: 88, fontWeight: 700, color: T.text, lineHeight: 1, letterSpacing: -4 }}>{ss}</span>
+            </div>
+            <Label style={{ marginBottom: 28 }}>Remaining in window</Label>
+
+            {/* Progress bar */}
+            <div style={{ width: '100%', height: 3, background: T.s3, borderRadius: 3, overflow: 'hidden', marginBottom: 32 }}>
+              <div style={{ height: '100%', width: `${(1 - windowProgress) * 100}%`, background: barColor, borderRadius: 3, transition: 'width 1s linear, background 0.3s' }} />
+            </div>
+
+            {/* Streak stake */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {icons.flame(T.muted)}
+              <span style={{ fontFamily: T.dg, fontSize: 13, color: T.muted }}>Streak at stake:</span>
+              <span style={{ fontFamily: T.dg, fontSize: 13, fontWeight: 700, color: T.accent }}>12 days</span>
+            </div>
+          </div>
+
+          {/* CTAs */}
+          <div style={{ padding: '0 22px 40px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button onClick={() => setPhase('preview')} style={{
+              width: '100%', background: T.accent, border: 'none', borderRadius: 14, padding: '18px',
+              fontFamily: T.dg, fontSize: 17, fontWeight: 700, color: T.bg, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            }}>
+              {icons.camera(T.bg)}
+              Capture Proof
+            </button>
+            <button onClick={() => snoozed < 3 && setSnoozed(s => s + 1)} style={{
+              width: '100%', background: 'transparent', border: `1px solid ${snoozed >= 3 ? T.dim : T.s3}`,
+              borderRadius: 14, padding: '16px', fontFamily: T.dg, fontSize: 14, fontWeight: 500,
+              color: snoozed >= 3 ? T.dim : T.muted, cursor: snoozed >= 3 ? 'not-allowed' : 'pointer',
+            }}>
+              {snoozed >= 3 ? 'No snoozes remaining' : `Snooze  ·  −10 pts  ·  ${3 - snoozed} of 3 left`}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── SPRINT BUILDER ───────────────────────────────────────────────────────────
+    function SprintBuilder({ onBack, onLocked }) {
+      const [step, setStep] = useState(0);
+      const [goals, setGoals] = useState([
+        { name: 'Morning Workout', time: '7:00 AM', days: 'Mon–Fri', pts: 30, window: '30 min' },
+        { name: 'Cold Shower',     time: '6:00 AM', days: 'Daily',   pts: 15, window: '15 min' },
+        { name: 'Midday Walk',     time: '12:00 PM',days: 'Daily',   pts: 20, window: '20 min' },
+        { name: 'Reading',         time: '9:00 PM', days: 'Daily',   pts: 20, window: '30 min' },
+      ]);
+      const [lockProgress, setLockProgress] = useState(0);
+      const [locked, setLocked] = useState(false);
+      const startX = useRef(null);
+
+      const templates = ['Fitness Foundations', 'Deep Work 14', 'Reading Habit', 'Morning Ritual', 'Athlete Base'];
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+      const onStart = (e) => { startX.current = e.touches?.[0]?.clientX ?? e.clientX; };
+      const onMove = (e) => {
+        if (startX.current == null) return;
+        const x = e.touches?.[0]?.clientX ?? e.clientX;
+        const pct = Math.max(0, Math.min(1, (x - startX.current) / 250));
+        setLockProgress(pct);
+      };
+      const onEnd = () => {
+        if (lockProgress > 0.88) {
+          setLocked(true);
+          setLockProgress(1);
+          setTimeout(onLocked, 1800);
+        } else {
+          setLockProgress(0);
+        }
+        startX.current = null;
+      };
+
+      const stepLabels = ['Goals', 'Schedule', 'Lock'];
+
+      if (locked) return (
+        <div style={{ background: T.bg, height: '100%', paddingTop: 68, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', border: `2px solid ${T.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+            {icons.lock(T.accent)}
+          </div>
+          <div style={{ fontFamily: T.dg, fontSize: 36, fontWeight: 700, color: T.text, marginBottom: 10, letterSpacing: -1 }}>Sprint Locked.</div>
+          <div style={{ fontFamily: T.bd, fontSize: 15, color: T.muted, textAlign: 'center', padding: '0 48px', lineHeight: 1.6 }}>14 days. No changes. No excuses.</div>
+        </div>
+      );
+
+      return (
+        <div style={{ background: T.bg, height: '100%', display: 'flex', flexDirection: 'column', paddingTop: 68 }}>
+          {/* Header */}
+          <div style={{ padding: '0 22px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+              <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                {icons.chevron(T.muted)}
+              </button>
+              <div style={{ fontFamily: T.dg, fontSize: 20, fontWeight: 700, color: T.text }}>New Sprint</div>
+              <div style={{ marginLeft: 'auto', fontFamily: T.bd, fontSize: 13, color: T.muted }}>14 days</div>
+            </div>
+            {/* Progress steps */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+              {stepLabels.map((s, i) => (
+                <div key={i} style={{ flex: 1, height: 2.5, borderRadius: 2, background: i <= step ? T.accent : T.dim, transition: 'background 0.3s', cursor: i < step ? 'pointer' : 'default' }} onClick={() => i < step && setStep(i)} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {stepLabels.map((s, i) => (
+                <div key={i} style={{ flex: 1, fontFamily: T.bd, fontSize: 10, color: i === step ? T.accent : T.muted, fontWeight: i === step ? 600 : 400 }}>{s}</div>
+              ))}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '0 22px' }}>
+
+            {/* ─ Step 0: Goals ─ */}
+            {step === 0 && (
+              <div>
+                <div style={{ background: T.s1, borderRadius: 12, border: `0.5px solid ${T.dim}`, marginBottom: 24, padding: '4px 0' }}>
+                  <input defaultValue="Sprint #3" style={{ background: 'transparent', border: 'none', outline: 'none', padding: '13px 16px', width: '100%', fontFamily: T.dg, fontSize: 20, fontWeight: 700, color: T.text }} />
+                </div>
+
+                <Label style={{ marginBottom: 12 }}>Templates</Label>
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 28 }}>
+                  {templates.map((t, i) => (
+                    <div key={i} style={{ flexShrink: 0, background: T.s2, borderRadius: 10, padding: '9px 14px', border: `0.5px solid ${T.dim}`, fontFamily: T.dg, fontSize: 13, fontWeight: 500, color: T.text, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t}</div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Label>Goals ({goals.length})</Label>
+                  <div style={{
+                    padding: '4px 10px', borderRadius: 20,
+                    background: goals.length <= 3 ? T.accent + '22' : goals.length <= 5 ? T.amber + '22' : T.red + '22',
+                    border: `0.5px solid ${goals.length <= 3 ? T.accent + '44' : goals.length <= 5 ? T.amber + '44' : T.red + '44'}`,
+                  }}>
+                    <span style={{ fontFamily: T.dg, fontSize: 10, fontWeight: 700, color: goals.length <= 3 ? T.accent : goals.length <= 5 ? T.amber : T.red }}>
+                      Load: {goals.length <= 3 ? 'Light' : goals.length <= 5 ? 'Moderate' : 'Heavy'}
+                    </span>
+                  </div>
+                </div>
+
+                {goals.map((g, i) => (
+                  <div key={i}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: T.dg, fontSize: 15, fontWeight: 600, color: T.text }}>{g.name}</div>
+                        <div style={{ fontFamily: T.bd, fontSize: 12, color: T.muted, marginTop: 3 }}>{g.time} · {g.days} · {g.window}</div>
+                      </div>
+                      <div style={{ fontFamily: T.dg, fontSize: 13, fontWeight: 600, color: T.muted }}>{g.pts}pts</div>
+                      <button onClick={() => setGoals(gs => gs.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: T.red, fontSize: 20, lineHeight: 1 }}>×</button>
+                    </div>
+                    {i < goals.length - 1 && <Divider />}
+                  </div>
+                ))}
+
+                <button onClick={() => setGoals(gs => [...gs, { name: 'Custom Goal', time: '8:00 AM', days: 'Daily', pts: 20, window: '30 min' }])} style={{ marginTop: 12, width: '100%', background: 'transparent', border: `1px dashed ${T.dim}`, borderRadius: 12, padding: '13px', fontFamily: T.dg, fontSize: 14, fontWeight: 600, color: T.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  {icons.plus(T.muted)} Add Custom Goal
+                </button>
+              </div>
+            )}
+
+            {/* ─ Step 1: Schedule ─ */}
+            {step === 1 && (
+              <div>
+                <Label style={{ marginBottom: 16 }}>Week Preview</Label>
+                {days.map((day, di) => {
+                  const dayGoals = goals.filter((_, gi) => di < 5 ? true : gi % 2 === 0);
+                  return (
+                    <div key={di} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                      <div style={{ width: 32, fontFamily: T.dg, fontSize: 12, fontWeight: 600, color: T.muted, flexShrink: 0 }}>{day}</div>
+                      <div style={{ flex: 1, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {dayGoals.map((g, gi) => (
+                          <div key={gi} style={{ background: T.s2, borderRadius: 6, padding: '4px 9px', fontFamily: T.bd, fontSize: 10, color: T.accent, border: `0.5px solid ${T.accent}33`, whiteSpace: 'nowrap' }}>
+                            {g.time.split(':')[0]}{g.time.includes('PM') ? 'p' : 'a'} {g.name.split(' ')[0]}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ background: T.s1, borderRadius: 12, padding: '16px', border: `0.5px solid ${T.dim}`, marginTop: 16 }}>
+                  <Label style={{ marginBottom: 12 }}>Daily Load</Label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 56 }}>
+                    {[0.65, 0.65, 0.65, 0.65, 0.65, 0.35, 0.35].map((h, i) => (
+                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                        <div style={{ width: '100%', height: 44, display: 'flex', alignItems: 'flex-end', background: T.s3, borderRadius: 4 }}>
+                          <div style={{ width: '100%', height: `${h * 100}%`, background: h > 0.8 ? T.red : h > 0.5 ? T.amber : T.accent, borderRadius: 4, opacity: 0.85 }} />
+                        </div>
+                        <div style={{ fontFamily: T.dg, fontSize: 9, color: T.dim }}>{'MTWTFSS'[i]}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ background: T.s1, borderRadius: 12, padding: '14px 16px', border: `0.5px solid ${T.dim}`, marginTop: 12 }}>
+                  {[
+                    { day: 'Mon–Fri', tasks: `${goals.filter((_, i) => true).length} tasks`, time: '~2h 15m' },
+                    { day: 'Sat–Sun', tasks: `${Math.ceil(goals.length / 2)} tasks`, time: '~1h 00m' },
+                  ].map((d, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: i === 0 ? `0.5px solid ${T.dim}` : 'none' }}>
+                      <span style={{ fontFamily: T.dg, fontSize: 13, color: T.text }}>{d.day}</span>
+                      <span style={{ fontFamily: T.bd, fontSize: 13, color: T.muted }}>{d.tasks} · {d.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ─ Step 2: Lock ─ */}
+            {step === 2 && (
+              <div>
+                {/* Summary card */}
+                <div style={{ background: T.s1, borderRadius: 16, padding: '20px', border: `0.5px solid ${T.dim}`, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                    <div>
+                      <div style={{ fontFamily: T.dg, fontSize: 22, fontWeight: 700, color: T.text, letterSpacing: -0.5 }}>Sprint #3</div>
+                      <div style={{ fontFamily: T.bd, fontSize: 13, color: T.muted, marginTop: 4 }}>14 days · starts today</div>
+                    </div>
+                    <div style={{ background: T.accent + '22', borderRadius: 10, padding: '8px 12px', textAlign: 'center' }}>
+                      <div style={{ fontFamily: T.dg, fontSize: 22, fontWeight: 700, color: T.accent }}>{goals.length}</div>
+                      <div style={{ fontFamily: T.bd, fontSize: 10, color: T.accent }}>goals</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 24 }}>
+                    {[
+                      { val: '70%', label: 'Min to pass' },
+                      { val: `${goals.reduce((a, g) => a + g.pts, 0) * 14}`, label: 'Max pts' },
+                      { val: '14', label: 'Days' },
+                    ].map((s, i) => (
+                      <div key={i}>
+                        <div style={{ fontFamily: T.dg, fontSize: 18, fontWeight: 700, color: T.text }}>{s.val}</div>
+                        <div style={{ fontFamily: T.bd, fontSize: 11, color: T.muted, marginTop: 2 }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Warning */}
+                <div style={{ background: T.amber + '0D', borderRadius: 12, padding: '14px 16px', border: `0.5px solid ${T.amber}33`, marginBottom: 24 }}>
+                  <div style={{ fontFamily: T.bd, fontSize: 13, color: T.amber, lineHeight: 1.6 }}>
+                    After locking, nothing can be changed. Not the goals, not the times, not the proof requirements.
+                  </div>
+                </div>
+
+                {/* Goals list */}
+                <Label style={{ marginBottom: 12 }}>Goals</Label>
+                {goals.map((g, i) => (
+                  <div key={i} style={{ padding: '12px 0', borderBottom: `0.5px solid ${T.dim}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div style={{ fontFamily: T.dg, fontSize: 14, fontWeight: 600, color: T.text }}>{g.name}</div>
+                      <div style={{ fontFamily: T.dg, fontSize: 13, fontWeight: 600, color: T.muted }}>{g.pts}pts</div>
+                    </div>
+                    <div style={{ fontFamily: T.bd, fontSize: 12, color: T.muted, marginTop: 3 }}>{g.time} · {g.days} · {g.window}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
+
+          {/* Footer CTA */}
+          <div style={{ padding: '14px 22px 32px', borderTop: `0.5px solid ${T.dim}`, flexShrink: 0 }}>
+            {step < 2 ? (
+              <button onClick={() => setStep(s => s + 1)} style={{ width: '100%', background: T.accent, border: 'none', borderRadius: 14, padding: '17px', fontFamily: T.dg, fontSize: 16, fontWeight: 700, color: T.bg, cursor: 'pointer' }}>Continue</button>
+            ) : (
+              <div
+                style={{ background: T.s2, borderRadius: 50, height: 62, position: 'relative', border: `1px solid ${T.dim}`, overflow: 'hidden', userSelect: 'none', touchAction: 'none', cursor: 'grab' }}
+                onMouseDown={onStart} onMouseMove={lockProgress > 0 ? onMove : undefined}
+                onMouseUp={onEnd} onMouseLeave={onEnd}
+                onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
+              >
+                {/* fill */}
+                <div style={{ position: 'absolute', inset: 0, background: T.accent + '18', width: `${lockProgress * 100}%`, transition: lockProgress === 0 ? 'width 0.3s' : 'none', borderRadius: 50 }} />
+                {/* label */}
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 1 - lockProgress * 1.5 }}>
+                  <span style={{ fontFamily: T.dg, fontSize: 14, fontWeight: 700, color: T.muted, letterSpacing: 1.5, textTransform: 'uppercase' }}>Slide to Lock Sprint</span>
+                  <span style={{ marginLeft: 8, color: T.dim }}>→</span>
+                </div>
+                {/* thumb */}
+                <div style={{
+                  position: 'absolute', top: 6, left: `calc(6px + ${lockProgress * 246}px)`,
+                  width: 50, height: 50, borderRadius: '50%', background: T.accent,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: lockProgress === 0 ? 'left 0.3s' : 'none',
+                  boxShadow: `0 0 ${20 * lockProgress}px ${T.accent}66`,
+                }}>
+                  {icons.lock(T.bg)}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── SPRINT DASHBOARD ─────────────────────────────────────────────────────────
+    function SprintDashboard({ onNewSprint }) {
+      const days = Array.from({ length: 14 }, (_, i) => ({
+        n: i + 1,
+        pct: i < 9 ? [1, 0.8, 1, 0.6, 1, 0, 1, 1, 0.9][i] : null,
+      }));
+      const goals = [
+        { name: 'Morning Workout', pct: 0.89 },
+        { name: 'Cold Shower',     pct: 1.00 },
+        { name: 'Midday Walk',     pct: 0.78 },
+        { name: 'Deep Work Block', pct: 0.67 },
+        { name: 'Reading',         pct: 0.89 },
+      ];
+      const heatColor = (pct) => {
+        if (pct === null) return T.s2;
+        if (pct === 0)    return T.red + 'AA';
+        if (pct < 0.7)    return T.amber + '88';
+        if (pct < 0.95)   return T.accent + '77';
+        return T.accent;
+      };
+
+      return (
+        <div style={{ background: T.bg, paddingTop: 68 }}>
+          {/* Header */}
+          <div style={{ padding: '0 22px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div>
+              <Label style={{ marginBottom: 4 }}>Sprint #3 · Day 9 of 14</Label>
+              <div style={{ fontFamily: T.dg, fontSize: 28, fontWeight: 700, color: T.text, letterSpacing: -0.5 }}>On Track</div>
+            </div>
+            <div style={{ fontFamily: T.dg, fontSize: 14, fontWeight: 600, color: T.accent }}>↑ Passing</div>
+          </div>
+
+          {/* Heatmap */}
+          <div style={{ padding: '0 22px', marginBottom: 28 }}>
+            <Label style={{ marginBottom: 12 }}>14-Day Heatmap</Label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
+              {days.map((d, i) => (
+                <div key={i} style={{
+                  aspectRatio: '1', borderRadius: 8, background: heatColor(d.pct),
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  border: d.pct === null ? `1px dashed ${T.dim}` : 'none',
+                }}>
+                  <div style={{ fontFamily: T.dg, fontSize: 12, fontWeight: 700, color: d.pct !== null && d.pct > 0 ? T.bg : d.pct === 0 ? T.text : T.dim, lineHeight: 1 }}>{d.n}</div>
+                  {d.pct !== null && d.pct > 0 && <div style={{ fontFamily: T.dg, fontSize: 8, color: T.bg + 'CC', marginTop: 1 }}>{Math.round(d.pct * 100)}%</div>}
+                  {d.pct === 0 && <div style={{ fontFamily: T.dg, fontSize: 8, color: T.text + '99', marginTop: 1 }}>miss</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{ padding: '0 22px', marginBottom: 28 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {[
+                { val: '847', label: 'Points' },
+                { val: '12',  label: 'Streak' },
+                { val: '3',   label: 'Missed' },
+                { val: '84%', label: 'Avg' },
+              ].map((s, i) => (
+                <div key={i} style={{ background: T.s1, borderRadius: 12, padding: '13px 8px', border: `0.5px solid ${T.dim}`, textAlign: 'center' }}>
+                  <div style={{ fontFamily: T.dg, fontSize: 20, fontWeight: 700, color: T.text }}>{s.val}</div>
+                  <div style={{ fontFamily: T.bd, fontSize: 10, color: T.muted, marginTop: 4 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Per-goal breakdown */}
+          <div style={{ padding: '0 22px', marginBottom: 24 }}>
+            <Label style={{ marginBottom: 14 }}>Goal Breakdown</Label>
+            {goals.map((g, i) => (
+              <div key={i} style={{ padding: '13px 0', borderBottom: i < goals.length - 1 ? `0.5px solid ${T.dim}` : 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ fontFamily: T.dg, fontSize: 14, fontWeight: 500, color: T.text }}>{g.name}</div>
+                  <div style={{ fontFamily: T.dg, fontSize: 14, fontWeight: 700, color: g.pct >= 0.7 ? T.accent : T.red }}>{Math.round(g.pct * 100)}%</div>
+                </div>
+                <div style={{ background: T.s3, borderRadius: 3, height: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${g.pct * 100}%`, background: g.pct >= 0.7 ? T.accent : T.red, borderRadius: 3 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* New sprint button */}
+          <div style={{ padding: '0 22px 16px' }}>
+            <button onClick={onNewSprint} style={{ width: '100%', background: T.s1, border: `0.5px solid ${T.dim}`, borderRadius: 14, padding: '15px', fontFamily: T.dg, fontSize: 14, fontWeight: 600, color: T.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              {icons.plus(T.muted)} New Sprint
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── PROFILE SCREEN ───────────────────────────────────────────────────────────
+    function ProfileScreen() {
+      const badges = [
+        { name: 'First Sprint',  earned: true,  sym: '◆' },
+        { name: '3 Sprints',     earned: true,  sym: '◆◆◆' },
+        { name: '7-Day Streak',  earned: true,  sym: '▲' },
+        { name: 'Perfect Day',   earned: true,  sym: '●' },
+        { name: '30-Day Streak', earned: false, sym: '▲▲' },
+        { name: 'Perfect Sprint',earned: false, sym: '◈' },
+      ];
+      const history = [
+        { name: 'Sprint #2', result: 'pass', pct: 88, date: 'Mar 2026', days: 14 },
+        { name: 'Sprint #1', result: 'fail', pct: 58, date: 'Feb 2026', days: 14 },
+      ];
+
+      return (
+        <div style={{ background: T.bg, paddingTop: 68 }}>
+          {/* Header */}
+          <div style={{ padding: '0 22px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ width: 60, height: 60, borderRadius: '50%', background: T.s2, border: `2px solid ${T.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <span style={{ fontFamily: T.dg, fontSize: 22, fontWeight: 700, color: T.accent }}>MK</span>
+              </div>
+              <div style={{ fontFamily: T.dg, fontSize: 22, fontWeight: 700, color: T.text }}>mkang</div>
+              <div style={{ fontFamily: T.bd, fontSize: 13, color: T.accent, marginTop: 3 }}>Sprint #3 Active · Day 9</div>
+            </div>
+            <button style={{ marginTop: 4, background: 'none', border: `1px solid ${T.dim}`, borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontFamily: T.dg, fontSize: 12, fontWeight: 600, color: T.muted }}>Settings</button>
+          </div>
+
+          {/* Lifetime stats */}
+          <div style={{ padding: '0 22px', marginBottom: 28 }}>
+            <Label style={{ marginBottom: 12 }}>Lifetime</Label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+              {[
+                { val: '3',  label: 'Sprints started' },
+                { val: '2',  label: 'Sprints passed' },
+                { val: '12', label: 'Current streak' },
+                { val: '19', label: 'Longest streak' },
+              ].map((s, i) => (
+                <div key={i} style={{ background: T.s1, borderRadius: 14, padding: '16px 18px', border: `0.5px solid ${T.dim}` }}>
+                  <div style={{ fontFamily: T.dg, fontSize: 32, fontWeight: 700, color: T.text, lineHeight: 1 }}>{s.val}</div>
+                  <div style={{ fontFamily: T.bd, fontSize: 12, color: T.muted, marginTop: 6 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Badges */}
+          <div style={{ padding: '0 22px', marginBottom: 28 }}>
+            <Label style={{ marginBottom: 12 }}>Badges</Label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {badges.map((b, i) => (
+                <div key={i} style={{ background: T.s1, borderRadius: 12, padding: '14px 8px', border: `0.5px solid ${b.earned ? T.accent + '33' : T.dim}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, opacity: b.earned ? 1 : 0.3 }}>
+                  <div style={{ fontFamily: T.dg, fontSize: 18, color: b.earned ? T.accent : T.muted, letterSpacing: 2 }}>{b.sym}</div>
+                  <div style={{ fontFamily: T.bd, fontSize: 9, fontWeight: 500, color: T.muted, textAlign: 'center', lineHeight: 1.3 }}>{b.name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Sprint history */}
+          <div style={{ padding: '0 22px', marginBottom: 16 }}>
+            <Label style={{ marginBottom: 14 }}>Sprint History</Label>
+            {history.map((h, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: i < history.length - 1 ? `0.5px solid ${T.dim}` : 'none' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: h.result === 'pass' ? T.accent : T.red }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: T.dg, fontSize: 15, fontWeight: 600, color: T.text }}>{h.name}</div>
+                  <div style={{ fontFamily: T.bd, fontSize: 12, color: T.muted, marginTop: 2 }}>{h.date} · {h.days} days</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontFamily: T.dg, fontSize: 18, fontWeight: 700, color: h.result === 'pass' ? T.accent : T.red }}>{h.pct}%</div>
+                  <div style={{ fontFamily: T.bd, fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: 1 }}>{h.result}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── ROOT ─────────────────────────────────────────────────────────────────────
+    function App() {
+      const [tab, setTab] = useState('today');
+      const [actionTask, setActionTask] = useState(null);
+      const [showBuilder, setShowBuilder] = useState(false);
+
+      const showNav = !actionTask && !showBuilder;
+
+      const renderScreen = () => {
+        if (actionTask) return <ActionScreen task={actionTask} onBack={() => setActionTask(null)} />;
+        if (showBuilder) return <SprintBuilder onBack={() => setShowBuilder(false)} onLocked={() => { setShowBuilder(false); setTab('today'); }} />;
+        if (tab === 'today')   return <TodayScreen onOpenAction={setActionTask} />;
+        if (tab === 'sprint')  return <SprintDashboard onNewSprint={() => setShowBuilder(true)} />;
+        if (tab === 'profile') return <ProfileScreen />;
+      };
+
+      return (
+        <IOSDevice dark width={390} height={844}>
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: T.bg }}>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {renderScreen()}
+            </div>
+            {showNav && <BottomNav tab={tab} onTab={setTab} />}
+          </div>
+        </IOSDevice>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

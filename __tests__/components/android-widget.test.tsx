@@ -68,14 +68,15 @@ describe('StreakWidget4x2', () => {
     expect(screen.getByText('GRIT')).toBeTruthy();
   });
 
-  it('shows streak with flame in wide layout', () => {
+  it('shows streak count and flame in wide layout', () => {
     render(<StreakWidget4x2 {...defaultProps} />);
-    expect(screen.getByText('12 Day Streak 🔥')).toBeTruthy();
+    expect(screen.getByText('12 Day Streak')).toBeTruthy();
+    expect(screen.getByText('🔥')).toBeTruthy();
   });
 
   it('shows sprint day info', () => {
     render(<StreakWidget4x2 {...defaultProps} />);
-    expect(screen.getByText('Day 7 of 14')).toBeTruthy();
+    expect(screen.getByText('Sprint · Day 7 of 14')).toBeTruthy();
   });
 
   it('shows daily completion percentage', () => {
